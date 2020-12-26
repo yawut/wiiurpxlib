@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include "be2_val.hpp"
+#include <cstdint>
+
 #define SHF_RPL_ZLIB	    0x08000000
 
 #define SHT_PROGBITS        0x00000001
@@ -42,33 +45,33 @@ u32 tempa_u32,
 ulg pos;
 
 typedef struct {
-	u8  e_ident[0x10];
-	u16 e_type;
-	u16 e_machine;
-	u32 e_version;
-	u32 e_entry;
-	u32 e_phoff;
-	u32 e_shoff;
-	u32 e_flags;
-	u16 e_ehsize;
-	u16 e_phentsize;
-	u16 e_phnum;
-	u16 e_shentsize;
-	u16 e_shnum;
-	u16 e_shstrndx;
+	uint8_t  e_ident[0x10];
+	be2_val<uint16_t> e_type;
+	be2_val<uint16_t> e_machine;
+	be2_val<uint32_t> e_version;
+	be2_val<uint32_t> e_entry;
+	be2_val<uint32_t> e_phoff;
+	be2_val<uint32_t> e_shoff;
+	be2_val<uint32_t> e_flags;
+	be2_val<uint16_t> e_ehsize;
+	be2_val<uint16_t> e_phentsize;
+	be2_val<uint16_t> e_phnum;
+	be2_val<uint16_t> e_shentsize;
+	be2_val<uint16_t> e_shnum;
+	be2_val<uint16_t> e_shstrndx;
 } Elf32_Ehdr;
 
 typedef struct {
-	u32 sh_name;
-	u32 sh_type;
-	u32 sh_flags;
-	u32 sh_addr;
-	u32 sh_offset;
-	u32 sh_size;
-	u32 sh_link;
-	u32 sh_info;
-	u32 sh_addralign;
-	u32 sh_entsize;
+	be2_val<uint32_t> sh_name;
+	be2_val<uint32_t> sh_type;
+	be2_val<uint32_t> sh_flags;
+	be2_val<uint32_t> sh_addr;
+	be2_val<uint32_t> sh_offset;
+	be2_val<uint32_t> sh_size;
+	be2_val<uint32_t> sh_link;
+	be2_val<uint32_t> sh_info;
+	be2_val<uint32_t> sh_addralign;
+	be2_val<uint32_t> sh_entsize;
 } Elf32_Shdr;
 
 typedef struct {

@@ -5,10 +5,11 @@ project(wiiurpxlib
     VERSION 1.0.0
 )
 
-add_library(wiiurpx
+add_executable(wiiurpx
     ${PROJECT_SOURCE_DIR}/source/wiiurpxtool.cpp
 )
-add_library(wiiurpxlib::wiiurpxlib ALIAS wiiurpx)
+#add_library(wiiurpxlib::wiiurpxlib ALIAS wiiurpx)
+set_property(TARGET wiiurpx PROPERTY CXX_STANDARD 17)
 
 target_include_directories(wiiurpx
     PUBLIC
