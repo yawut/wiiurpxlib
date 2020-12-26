@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(wiiurpxlib
+    LANGUAGES CXX
+    VERSION 1.0.0
+)
+
+add_library(wiiurpx
+    ${PROJECT_SOURCE_DIR}/source/wiiurpxtool.cpp
+)
+add_library(wiiurpxlib::wiiurpxlib ALIAS wiiurpx)
+
+target_include_directories(wiiurpx
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/source
+)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(zlib REQUIRED IMPORTED_TARGET zlib)
+
+target_link_libraries(wiiurpx PRIVATE
+    PkgConfig::zlib
+)

@@ -2,14 +2,12 @@
 // Licensed under the terms of the GNU GPL, version 3
 // http://www.gnu.org/licenses/gpl-3.0.txt
 
-#include <io.h>
+#include <cstdio>
 #include <string.h>
 #include <vector>
-#include <algorithm> 
+#include <algorithm>
 #include <zlib.h>
-#include "wiiurpxtool.h"
-
-#pragma warning(disable : 4996)
+#include "elf.h"
 
 using namespace std;
 
@@ -67,7 +65,7 @@ int decompress(FILE *in, FILE *out)
 	fwrite32_BE(0x00000000, out);
 	fwrite32_BE(0x00000000, out);
 	fwrite32_BE(0x00000000, out);
-	ulg crc_data_offset = 0; 
+	ulg crc_data_offset = 0;
 	u32 *crcs = new u32[ehdr.e_shnum];
 	vector< Elf32_Shdr_Sort > shdr_table_index;
 	Elf32_Shdr *shdr_table = new Elf32_Shdr[ehdr.e_shnum];
@@ -172,7 +170,7 @@ int decompress(FILE *in, FILE *out)
 		fwrite32_BE(shdr_table[i].sh_addralign, out);
 		fwrite32_BE(shdr_table[i].sh_entsize, out);
 	}
-	
+
 	fseek(out, crc_data_offset, 0);
 	for (u32 i=0; i<ehdr.e_shnum; i++)
 		fwrite32_BE(crcs[i], out);
@@ -221,7 +219,7 @@ int compress(FILE *in, FILE *out)
 	fwrite32_BE(0x00000000, out);
 	fwrite32_BE(0x00000000, out);
 	fwrite32_BE(0x00000000, out);
-	ulg crc_data_offset = 0; 
+	ulg crc_data_offset = 0;
 	u32 *crcs = new u32[ehdr.e_shnum];
 	vector< Elf32_Shdr_Sort > shdr_table_index;
 	Elf32_Shdr *shdr_table = new Elf32_Shdr[ehdr.e_shnum];
