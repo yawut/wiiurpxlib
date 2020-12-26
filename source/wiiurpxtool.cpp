@@ -22,7 +22,6 @@ void fwrite32_BE(u32 i, FILE *f);
 void fwrite64_BE(u64 i, FILE *f);
 u32 crc32_rpx(u32 crc, u8 *buff, u32 len);
 bool SortFunc(const Elf32_Shdr_Sort &v1, const Elf32_Shdr_Sort &v2);
-int fcopy(char *src_name, char *dest_name);
 int decompress(FILE *in, FILE *out);
 int compress(FILE *in, FILE *out);
 
@@ -368,48 +367,6 @@ int compress(FILE *in, FILE *out)
 	return 0;
 }
 
-int main(int argc, char *argv[])
-{
-	if(argc < 3)
-	{
-		printf("wiiurpxtool - version:1.3\n");
-		printf("Compress or decompress RPL/RPX files for Wii U\n\n");
-		printf("Usage:\n");
-		printf("decompress:\n");
-		printf("wiiurpxtool -d <rpx_name> [out_name]\n");
-		printf("compress:\n");
-		printf("wiiurpxtool -c <rpx_name> [out_name]\n");
-		return 0;
-	}
-	FILE *in = fopen(argv[2], "rb");
-	if(in == NULL) return -1;
-	FILE *out;
-	if(argc == 3)
-		out = fopen("temp.bin", "wb");
-	else
-	{
-		out = fopen(argv[3], "wb");
-		if (out == NULL) return -1;
-	}
-	s32 result = -1;
-	if(strcmp("-d", argv[1]) == 0)
-	{
-		printf("decompressing...\n");
-		result = decompress(in, out);
-	}
-	if(strcmp("-c", argv[1]) == 0)
-	{
-		printf("compressing...\n");
-		result = compress(in, out);
-	}
-	fclose(in);
-	fclose(out);
-	if(argc == 3 && result == 0)
-		fcopy("temp.bin", argv[2]);
-	remove("temp.bin");
-	return 0;
-}
-
 u32 crc32_rpx(u32 crc, u8 *buff, u32 len)
 {
 	u32 crc_table[256];
@@ -496,28 +453,4 @@ void fwrite64_BE(u64 i, FILE *f)
 {
 	u64 p = Low2Big_u64(i);
 	fwrite(&p, sizeof(u64), 1, f);
-}
-
-int fcopy(char *src_name, char *dest_name)
-{
-	FILE *src=fopen(src_name, "rb");
-	if(src == NULL) return -1;
-	FILE *dest=fopen(dest_name, "wb");
-	fseek(src, 0, 2);
-	unsigned int data_size=ftell(src);
-	rewind(src);
-	unsigned int block_size = 512;
-	while(data_size>0)
-	{
-		char data[512];
-		block_size = 512;
-		if(data_size<block_size)
-			block_size = data_size;
-		data_size -= block_size;
-		fread(data, 1, block_size, src);
-		fwrite(data, 1, block_size, dest);
-	}
-	fclose(src);
-	fclose(dest);
-	return 0;
 }
