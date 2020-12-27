@@ -64,10 +64,29 @@ void writeelf(const Elf32& elf, std::ostream& os) {
 		if (shdr_pad) os.seekp(shdr_pad, std::ios_base::cur);
 	}
 
-	for (const auto& section : elf.sections) {
-		os.seekp(section.hdr.sh_offset.value());
-		os.write((const char*)section.data.data(), section.data.size());
+	//make list with all indexes in it
+	std::forward_list<size_t> section_indexes(elf.sections.size());
+	std::iota(section_indexes.begin(), section_indexes.end(), 0);
+	//sort by file offset, so we're always seeking forwards
+	section_indexes.sort([=] (const auto& a, const auto& b) {
+		return elf.sections[a].hdr.sh_offset < elf.sections[b].hdr.sh_offset;
+	});
+
+	//these variables are a bit weird but it's optimisation I swear
+	uint32_t file_offset;
+	uint32_t size;
+	for (auto section_index : section_indexes) {
+		const auto& section = elf.sections[section_index];
+
+		file_offset = section.hdr.sh_offset.value();
+		os.seekp(file_offset);
+		size = section.data.size();
+		os.write((const char*)section.data.data(), size);
 	}
+	file_offset += size;
+	//pad end of file to 0x40
+	os.seekp(alignup(file_offset, 0x40) - 1);
+	os.put(0x00);
 }
 
 std::optional<Elf32> decompress(std::istream& is)
