@@ -35,6 +35,7 @@ typedef struct {
 		uint32_t crc32;
 	} Section;
 	std::vector<Section> sections;
+	std::forward_list<size_t> section_file_order;
 } Elf32;
 
 //lil' utility to hide some ugly reading bits
@@ -64,18 +65,10 @@ void writeelf(const Elf32& elf, std::ostream& os) {
 		if (shdr_pad) os.seekp(shdr_pad, std::ios_base::cur);
 	}
 
-	//make list with all indexes in it
-	std::forward_list<size_t> section_indexes(elf.sections.size());
-	std::iota(section_indexes.begin(), section_indexes.end(), 0);
-	//sort by file offset, so we're always seeking forwards
-	section_indexes.sort([=] (const auto& a, const auto& b) {
-		return elf.sections[a].hdr.sh_offset < elf.sections[b].hdr.sh_offset;
-	});
-
 	//these variables are a bit weird but it's optimisation I swear
 	uint32_t file_offset;
 	uint32_t size;
-	for (auto section_index : section_indexes) {
+	for (auto section_index : elf.section_file_order) {
 		const auto& section = elf.sections[section_index];
 
 		file_offset = section.hdr.sh_offset.value();
@@ -87,6 +80,29 @@ void writeelf(const Elf32& elf, std::ostream& os) {
 	//pad end of file to 0x40
 	os.seekp(alignup(file_offset, 0x40) - 1);
 	os.put(0x00);
+}
+
+void relink(Elf32& elf) {
+	//some variables to keep track of the current file offset
+	auto data_start = elf.ehdr.e_shoff + elf.ehdr.e_shnum * elf.ehdr.e_shentsize;
+	auto file_offset = data_start;
+
+	bool first_section = true;
+	for (auto section_index : elf.section_file_order) {
+		auto& section = elf.sections[section_index];
+		auto& shdr = section.hdr;
+
+		if (!shdr.sh_offset) continue;
+
+		//this bit is replicating some interesting quirks of the original tool
+		//I don't like it but I'm not one to argue too much
+		if (!first_section) {
+			file_offset = alignup(file_offset, 0x40);
+		} else first_section = false;
+
+		shdr.sh_offset = file_offset;
+		file_offset += shdr.sh_size;
+	}
 }
 
 std::optional<Elf32> decompress(std::istream& is)
@@ -118,21 +134,15 @@ std::optional<Elf32> decompress(std::istream& is)
 		if (shdr_pad) is.seekg(shdr_pad, std::ios_base::cur);
 	}
 
-	//some variables to keep track of the current file offset
-	auto data_start = elf.ehdr.e_shoff + elf.ehdr.e_shnum * elf.ehdr.e_shentsize;
-	auto file_offset = data_start;
-
-	//make list with all indexes in it
-	std::forward_list<size_t> section_indexes(elf.sections.size());
-	std::iota(section_indexes.begin(), section_indexes.end(), 0);
 	//sort by file offset, so all sections stay in the same order in-file
-	section_indexes.sort([=] (const auto& a, const auto& b) {
+	elf.section_file_order.resize(elf.sections.size());
+	std::iota(elf.section_file_order.begin(), elf.section_file_order.end(), 0);
+	elf.section_file_order.sort([=] (const auto& a, const auto& b) {
 		return elf.sections[a].hdr.sh_offset < elf.sections[b].hdr.sh_offset;
 	});
 
 	//decompress sections
-	bool first_section = true;
-	for (auto& section_index : section_indexes) {
+	for (auto& section_index : elf.section_file_order) {
 		auto& section = elf.sections[section_index];
 		auto& shdr = section.hdr;
 		if (!shdr.sh_offset) continue;
@@ -216,16 +226,10 @@ std::optional<Elf32> decompress(std::istream& is)
 				section.data.cend()
 			);
 		}
-
-		//this bit is replicating some interesting quirks of the original tool
-		//I don't like it but I'm not one to argue too much
-		if (!first_section) {
-			file_offset = alignup(file_offset, 0x40);
-		} else first_section = false;
-
-		shdr.sh_offset = file_offset;
-		file_offset += shdr.sh_size;
 	}
+
+	//relink elf to adjust file offsets
+	relink(elf);
 
 	return elf;
 }
