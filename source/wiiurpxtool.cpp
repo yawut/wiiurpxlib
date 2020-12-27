@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <forward_list>
 #include <cstdint>
 #include <string.h>
 #include <vector>
@@ -18,9 +19,9 @@
 
 template <typename T, typename U>
 static constexpr T alignup(T val, U align) {
-	auto mask = ~(align - 1);
+	auto mask = (align - 1);
 	if ((val & mask) == 0) return val;
-	return (val + align) & mask;
+	return (val + align) & ~mask;
 }
 
 template <typename InputIterator>
@@ -98,14 +99,22 @@ std::optional<Elf32> decompress(std::istream& is)
 		if (shdr_pad) is.seekg(shdr_pad, std::ios_base::cur);
 	}
 
-	//note the OG wiiurpxtool sorted the section headers here, I'm not bothering
-
 	//some variables to keep track of the current file offset
 	auto data_start = elf.ehdr.e_shoff + elf.ehdr.e_shnum * elf.ehdr.e_shentsize;
 	auto file_offset = data_start;
 
+	//make list with all indexes in it
+	std::forward_list<size_t> section_indexes(elf.sections.size());
+	std::iota(section_indexes.begin(), section_indexes.end(), 0);
+	//sort by file offset, so all sections stay in the same order in-file
+	section_indexes.sort([=] (const auto& a, const auto& b) {
+		return elf.sections[a].hdr.sh_offset < elf.sections[b].hdr.sh_offset;
+	});
+
 	//decompress sections
-	for (auto& section : elf.sections) {
+	bool first_section = true;
+	for (auto& section_index : section_indexes) {
+		auto& section = elf.sections[section_index];
 		auto& shdr = section.hdr;
 		if (!shdr.sh_offset) continue;
 
@@ -177,11 +186,6 @@ std::optional<Elf32> decompress(std::istream& is)
 
 			//update other things as needed
 			shdr.sh_size = uncompressed_sz;
-
-			//I'd like to use addralign, but the OG tool uses 0x40 so we shall to
-			file_offset = alignup(file_offset, 0x40);
-			shdr.sh_offset = file_offset;
-			file_offset += shdr.sh_size;
 		} else {
 			//allocate and read the uncompressed data
 			section.data.resize(shdr.sh_size);
@@ -193,6 +197,15 @@ std::optional<Elf32> decompress(std::istream& is)
 				section.data.cend()
 			);
 		}
+
+		//this bit is replicating some interesting quirks of the original tool
+		//I don't like it but I'm not one to argue too much
+		if (!first_section) {
+			file_offset = alignup(file_offset, 0x40);
+		} else first_section = false;
+
+		shdr.sh_offset = file_offset;
+		file_offset += shdr.sh_size;
 	}
 
 	return elf;
