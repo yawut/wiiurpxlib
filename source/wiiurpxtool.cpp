@@ -151,63 +151,38 @@ void decompress(Elf32& elf) {
 			be2_val<uint32_t> uncompressed_sz;
 			memcpy(&uncompressed_sz, section.data.data(), sizeof(uncompressed_sz));
 			//calc compressed size
-			auto compressed_sz = shdr.sh_size - sizeof(uncompressed_sz);
-
-			std::cout << "section at " << std::hex << shdr.sh_addr << " size " << compressed_sz << " uncompresses to " << uncompressed_sz << std::endl;
 
 			z_stream zstream = { 0 };
 			inflateInit(&zstream);
 
-			std::vector<uint8_t> uncompressed_data;
-			uncompressed_data.reserve(uncompressed_sz);
-
-			std::array<uint8_t, CHUNK> uncompressed_chunk;
-
 			//pass to zlib
-			zstream.avail_in = section.data.size() - 4;
-			zstream.next_in = (Bytef*)section.data.data() + 4;
+			zstream.avail_in = section.data.size() - sizeof(uncompressed_sz);
+			zstream.next_in = (Bytef*)section.data.data() + sizeof(uncompressed_sz);
 
-			//decompress chunk until zlib is happy
-			int zret;
-			do {
-				//reset uncompressed chunk buffer
-				zstream.avail_out = uncompressed_chunk.size();
-				zstream.next_out = (Bytef*)uncompressed_chunk.data();
-				//decompress!
-				zret = inflate(&zstream, Z_NO_FLUSH);
+			std::vector<uint8_t> uncompressed_data;
+			uncompressed_data.resize(uncompressed_sz);
 
-				//get size of decompressed data
-				auto uncompressed_chunk_sz = uncompressed_chunk.size() - zstream.avail_out;
-				//copy uncomressed data into section.data
-				std::copy(
-					uncompressed_chunk.cbegin(),
-					std::next(uncompressed_chunk.cbegin(), uncompressed_chunk_sz),
-					std::back_inserter(uncompressed_data)
-				);
-				//update running crc
-				section.crc32 = crc32_rpx(
-					section.crc32,
-					uncompressed_chunk.cbegin(),
-					std::next(uncompressed_chunk.cbegin(), uncompressed_chunk_sz)
-				);
-			} while (zstream.avail_out == 0 && zret == Z_OK);
+			//reset uncompressed chunk buffer
+			zstream.avail_out = uncompressed_data.size();
+			zstream.next_out = (Bytef*)uncompressed_data.data();
+
+			//decompress!
+			int zret = inflate(&zstream, Z_FINISH);
 
 			inflateEnd(&zstream);
+
 			section.data = std::move(uncompressed_data);
 
 			//we decompressed this section, so clear the flag
 			shdr.sh_flags &= ~SHF_RPL_ZLIB;
-
-			//update other things as needed
-			shdr.sh_size = uncompressed_sz;
-		} else {
-			//only compute crc
-			section.crc32 = crc32_rpx(
-				section.crc32,
-				section.data.cbegin(),
-				section.data.cend()
-			);
+			shdr.sh_size = (uint32_t)section.data.size();
 		}
+		//compute crc
+		section.crc32 = crc32_rpx(
+			section.crc32,
+			section.data.cbegin(),
+			section.data.cend()
+		);
 	}
 
 	//relink elf to adjust file offsets
@@ -218,6 +193,13 @@ void compress(Elf32& elf) {
 	for (auto& section : elf.sections) {
 		auto& shdr = section.hdr;
 		if (!shdr.sh_offset) continue;
+
+		//compute crc
+		section.crc32 = crc32_rpx(
+			section.crc32,
+			section.data.cbegin(),
+			section.data.cend()
+		);
 
 		if (shdr.sh_type == SHT_RPL_FILEINFO || shdr.sh_type == SHT_RPL_CRCS ||
 			shdr.sh_flags & SHF_RPL_ZLIB) continue;
@@ -243,16 +225,17 @@ void compress(Elf32& elf) {
 		compressed_data.resize(zstream.total_out + sizeof(uncompressed_sz));
 		memcpy(compressed_data.data(), &uncompressed_sz, sizeof(uncompressed_sz));
 
+		deflateEnd(&zstream);
+
 		//not really sure how the original tool does this, but it sure does
 		if (compressed_data.size() >= section.data.size()) continue;
 
 		compressed_data.shrink_to_fit();
 		section.data = std::move(compressed_data);
-		shdr.sh_size = (uint32_t)section.data.size();
 
+		//we compressed this section, so update the flag
 		shdr.sh_flags |= SHF_RPL_ZLIB;
-
-		std::cout << "zret: " << zret << std::endl;
+		shdr.sh_size = (uint32_t)section.data.size();
 	}
 
 	relink(elf);
