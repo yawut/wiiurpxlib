@@ -1,3 +1,7 @@
+// Copyright (C) 2016  CBH <maodatou88@163.com>, 2020 Ash Logan <ash@heyquark.com>
+// Licensed under the terms of the GNU GPL, version 3
+// http://www.gnu.org/licenses/gpl-3.0.txt
+
 #pragma once
 
 #include <iterator>

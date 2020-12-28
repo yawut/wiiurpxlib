@@ -1,4 +1,4 @@
-// Copyright (C) 2016  CBH <maodatou88@163.com>
+// Copyright (C) 2016  CBH <maodatou88@163.com>, 2020 Ash Logan <ash@heyquark.com>
 // Licensed under the terms of the GNU GPL, version 3
 // http://www.gnu.org/licenses/gpl-3.0.txt
 
@@ -78,7 +78,6 @@ std::optional<Elf32> readelf(std::istream& is) {
 
 	//allocate space for section headers
 	elf.sections.resize(elf.ehdr.e_shnum);
-	std::cout << "shnum " << elf.ehdr.e_shnum << std::endl;
 	//get padding (if any) for section header entries
 	auto shdr_pad = elf.ehdr.e_shentsize - sizeof(elf.sections[0].hdr);
 	//seek to first section header
@@ -253,17 +252,39 @@ void compress(Elf32& elf) {
 }
 
 int main(int argc, char** argv) {
-	printf("hi!\n");
-	std::ifstream infile("test.rpx", std::ios::binary);
-	auto elf = *readelf(infile);
+	if(argc < 4)
+	{
+		printf("wiiurpxtool - version:1.3\n");
+		printf("Compress or decompress RPL/RPX files for Wii U\n\n");
+		printf("Usage:\n");
+		printf("decompress:\n");
+		printf("wiiurpxtool -d <rpx_name> [out_name]\n");
+		printf("compress:\n");
+		printf("wiiurpxtool -c <rpx_name> [out_name]\n");
+		return 0;
+	}
 
-	decompress(elf);
-	std::ofstream outfile("test.d.rpx", std::ios::binary);
-	writeelf(elf, outfile);
+	std::ifstream infile(argv[2], std::ios::binary);
+	auto elf_o = readelf(infile);
+	if (!elf_o) {
+		printf("Couldn't parse input file!\n");
+		return -1;
+	}
+	auto elf = *elf_o;
 
-	compress(elf);
-	std::ofstream cotfile("test.c.rpx", std::ios::binary);
-	writeelf(elf, cotfile);
+	std::ofstream outfile(argv[3], std::ios::binary);
+	if (strcmp("-d", argv[1]) == 0) {
+		printf("decompressing...\n");
+		decompress(elf);
+		writeelf(elf, outfile);
+	} else if (strcmp("-c", argv[1]) == 0) {
+		printf("compressing...\n");
+		compress(elf);
+		writeelf(elf, outfile);
+	} else {
+		printf("invalid operation\n");
+		return -1;
+	}
 
 	return 0;
 }

@@ -1,6 +1,7 @@
-/* Borrowed from decaf-emu, licensed GPL3.0
- * https://github.com/decaf-emu/decaf-emu/blob/6ef8a24da13e519e68ce3c6a6fdece44841aaac2/src/libcpu/be2_val.h
- */
+// Copyright (C) 2020 decaf-emu contributors, Ash Logan <ash@heyquark.com>
+// Licensed under the terms of the GNU GPL, version 3
+// http://www.gnu.org/licenses/gpl-3.0.txt
+// https://github.com/decaf-emu/decaf-emu/blob/6ef8a24da13e519e68ce3c6a6fdece44841aaac2/src/libcpu/be2_val.h
 
 #pragma once
 
