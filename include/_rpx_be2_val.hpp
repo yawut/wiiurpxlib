@@ -8,6 +8,8 @@
 #include <utility>
 #include <type_traits>
 
+namespace rpx {
+
 // Same as std::underlying_type but works for non-enum Types
 template<class T, bool = std::is_enum<T>::value>
 struct safe_underlying_type : std::underlying_type<T> { };
@@ -533,4 +535,6 @@ public:
 
 private:
    value_type mStorage;
+};
+
 };

@@ -4,24 +4,23 @@
 
 #pragma once
 
-#include "be2_val.hpp"
+#include "_rpx_be2_val.hpp"
 #include <cstdint>
 
-#define SHF_RPL_ZLIB	    0x08000000
+namespace rpx {
 
-#define SHT_PROGBITS        0x00000001
-#define SHT_SYMTAB          0x00000002
-#define SHT_STRTAB          0x00000003
-#define SHT_RELA            0x00000004
-#define SHT_NOBITS          0x00000008
+const static int SHF_RPL_ZLIB     = 0x08000000;
 
-#define SHT_RPL_EXPORTS     0x80000001
-#define SHT_RPL_IMPORTS     0x80000002
-#define SHT_RPL_CRCS        0x80000003
-#define SHT_RPL_FILEINFO    0x80000004
+const static int SHT_PROGBITS     = 0x00000001;
+const static int SHT_SYMTAB       = 0x00000002;
+const static int SHT_STRTAB       = 0x00000003;
+const static int SHT_RELA         = 0x00000004;
+const static int SHT_NOBITS       = 0x00000008;
 
-#define CHUNK 16384
-#define ZLIB_LEVEL 6
+const static int SHT_RPL_EXPORTS  = 0x80000001;
+const static int SHT_RPL_IMPORTS  = 0x80000002;
+const static int SHT_RPL_CRCS     = 0x80000003;
+const static int SHT_RPL_FILEINFO = 0x80000004;
 
 typedef struct {
 	uint8_t  e_ident[0x10];
@@ -52,3 +51,5 @@ typedef struct {
 	be2_val<uint32_t> sh_addralign;
 	be2_val<uint32_t> sh_entsize;
 } Elf32_Shdr;
+
+};

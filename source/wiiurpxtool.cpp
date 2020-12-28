@@ -2,7 +2,7 @@
 // Licensed under the terms of the GNU GPL, version 3
 // http://www.gnu.org/licenses/gpl-3.0.txt
 
-#include "be2_val.hpp"
+#include "rpx.hpp"
 
 #include <cstdio>
 #include <iostream>
@@ -17,21 +17,14 @@
 #include <iterator>
 #include <zlib.h>
 #include "util.hpp"
-#include "elf.h"
 #include "crc32.hpp"
 
-typedef struct {
-	Elf32_Ehdr ehdr;
-	typedef struct {
-		Elf32_Shdr hdr;
-		std::vector<uint8_t> data;
-		uint32_t crc32;
-	} Section;
-	std::vector<Section> sections;
-	std::forward_list<size_t> section_file_order;
-} Elf32;
+#define CHUNK 16384
+#define ZLIB_LEVEL 6
 
-void writeelf(const Elf32& elf, std::ostream& os) {
+using namespace rpx;
+
+void rpx::writerpx(const rpx& elf, std::ostream& os) {
 	//write elf header out
 	os.write((char*)&elf.ehdr, sizeof(elf.ehdr));
 
@@ -64,8 +57,8 @@ void writeelf(const Elf32& elf, std::ostream& os) {
 	}
 }
 
-std::optional<Elf32> readelf(std::istream& is) {
-	Elf32 elf;
+std::optional<rpx::rpx> rpx::readrpx(std::istream& is) {
+	rpx elf;
 	is_read_advance(elf.ehdr, is);
 	if (memcmp(elf.ehdr.e_ident, "\x7f""ELF", 4) != 0) {
 		printf("e_ident bad!\n");
@@ -114,13 +107,13 @@ std::optional<Elf32> readelf(std::istream& is) {
 	return elf;
 }
 
-void relink(Elf32& elf) {
+void rpx::relink(rpx& elf) {
 	//some variables to keep track of the current file offset
 	auto data_start = elf.ehdr.e_shoff + elf.ehdr.e_shnum * elf.ehdr.e_shentsize;
 	auto file_offset = data_start;
 
 	//find the crc32s
-	auto crc_section = std::find_if(elf.sections.begin(), elf.sections.end(), [](Elf32::Section& s){
+	auto crc_section = std::find_if(elf.sections.begin(), elf.sections.end(), [](rpx::Section& s){
 		return s.hdr.sh_type == SHT_RPL_CRCS;
 	});
 	crc_section->crc32 = 0;
@@ -139,6 +132,8 @@ void relink(Elf32& elf) {
 
 		if (!shdr.sh_offset) continue;
 
+		shdr.sh_size = (uint32_t)section.data.size();
+
 		//this bit is replicating some interesting quirks of the original tool
 		//I don't like it but I'm not one to argue too much
 		if (!first_section) {
@@ -150,7 +145,7 @@ void relink(Elf32& elf) {
 	}
 }
 
-void decompress(Elf32& elf) {
+void rpx::decompress(rpx& elf) {
 	//decompress sections
 	for (auto& section : elf.sections) {
 		auto& shdr = section.hdr;
@@ -199,7 +194,7 @@ void decompress(Elf32& elf) {
 	relink(elf);
 }
 
-void compress(Elf32& elf) {
+void rpx::compress(rpx& elf) {
 	for (auto& section : elf.sections) {
 		auto& shdr = section.hdr;
 		if (!shdr.sh_offset) continue;
@@ -265,7 +260,7 @@ int main(int argc, char** argv) {
 	}
 
 	std::ifstream infile(argv[2], std::ios::binary);
-	auto elf_o = readelf(infile);
+	auto elf_o = readrpx(infile);
 	if (!elf_o) {
 		printf("Couldn't parse input file!\n");
 		return -1;
@@ -276,11 +271,11 @@ int main(int argc, char** argv) {
 	if (strcmp("-d", argv[1]) == 0) {
 		printf("decompressing...\n");
 		decompress(elf);
-		writeelf(elf, outfile);
+		writerpx(elf, outfile);
 	} else if (strcmp("-c", argv[1]) == 0) {
 		printf("compressing...\n");
 		compress(elf);
-		writeelf(elf, outfile);
+		writerpx(elf, outfile);
 	} else {
 		printf("invalid operation\n");
 		return -1;
