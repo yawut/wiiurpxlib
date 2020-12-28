@@ -5,11 +5,11 @@
 
 template <typename InputIterator>
 static uint32_t crc32_rpx(uint32_t crc, InputIterator first, InputIterator last) {
-	u32 crc_table[256];
-	for(u32 i=0; i<256; i++)
+	uint32_t crc_table[256];
+	for(uint32_t i=0; i<256; i++)
 	{
-		u32 c = i;
-		for(u32 j=0; j<8; j++)
+		uint32_t c = i;
+		for(uint32_t j=0; j<8; j++)
 		{
 			if(c & 1)
 				c = 0xedb88320L^(c>>1);

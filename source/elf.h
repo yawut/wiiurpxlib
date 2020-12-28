@@ -21,28 +21,7 @@
 #define SHT_RPL_FILEINFO    0x80000004
 
 #define CHUNK 16384
-#define LEVEL 6
-
-typedef unsigned char	u8;
-typedef unsigned short	u16;
-typedef unsigned int	u32;
-typedef signed   char	s8;
-typedef signed   short	s16;
-typedef signed   int    s32;
-typedef unsigned long	ulg;
-typedef unsigned long long u64;
-typedef signed long long   s64;
-
-u8  tempa_u8,
-    tempb_u8;
-
-u16 tempa_u16,
-    tempb_u16;
-
-u32 tempa_u32,
-    tempb_u32;
-
-ulg pos;
+#define ZLIB_LEVEL 6
 
 typedef struct {
 	uint8_t  e_ident[0x10];
@@ -73,42 +52,3 @@ typedef struct {
 	be2_val<uint32_t> sh_addralign;
 	be2_val<uint32_t> sh_entsize;
 } Elf32_Shdr;
-
-typedef struct {
-	u32 index;
-	u32 sh_offset;
-} Elf32_Shdr_Sort;
-
-typedef struct {
-	u32 st_name;
-	u32 st_value;
-	u32 st_size;
-	u8  st_info;
-	u8  st_other;
-	u16 st_shndx;
-} Elf32_Sym;
-
-typedef struct {
-	u32 r_offset;
-	u32 r_info;
-	s32 r_addend;
-} Elf32_Rela;
-
-typedef struct {
-	u32 magic_version;
-	u32 mRegBytes_Text;
-	u32 mRegBytes_TextAlign;
-	u32 mRegBytes_Data;
-	u32 mRegBytes_DataAlign;
-	u32 mRegBytes_LoaderInfo;
-	u32 mRegBytes_LoaderInfoAlign;
-	u32 mRegBytes_Temp;
-	u32 mTrampAdj;
-	u32 mSDABase;
-	u32 mSDA2Base;
-	u32 mSizeCoreStacks;
-	u32 mSrcFileNameOffset;
-	u32 mFlags;
-	u32 mSysHeapBytes;
-	u32 mTagsOffset;
-} Rpl_Fileinfo;

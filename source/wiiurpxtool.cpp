@@ -218,7 +218,7 @@ void compress(Elf32& elf) {
 		be2_val<uint32_t> uncompressed_sz = (uint32_t)section.data.size();
 
 		z_stream zstream = { 0 };
-		deflateInit(&zstream, LEVEL);
+		deflateInit(&zstream, ZLIB_LEVEL);
 
 		//pass to zlib
 		zstream.avail_in = section.data.size();
