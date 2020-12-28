@@ -11,15 +11,14 @@
 #include <cstdint>
 #include <string.h>
 #include <vector>
+#include <span>
 #include <algorithm>
 #include <numeric>
 #include <iterator>
 #include <zlib.h>
 #include "util.hpp"
 #include "elf.h"
-
-template <typename InputIterator>
-uint32_t crc32_rpx(uint32_t crc, InputIterator first, InputIterator last);
+#include "crc32.hpp"
 
 typedef struct {
 	Elf32_Ehdr ehdr;
@@ -31,7 +30,6 @@ typedef struct {
 	std::vector<Section> sections;
 	std::forward_list<size_t> section_file_order;
 } Elf32;
-
 
 void writeelf(const Elf32& elf, std::ostream& os) {
 	//write elf header out
@@ -122,10 +120,23 @@ void relink(Elf32& elf) {
 	auto data_start = elf.ehdr.e_shoff + elf.ehdr.e_shnum * elf.ehdr.e_shentsize;
 	auto file_offset = data_start;
 
+	//find the crc32s
+	auto crc_section = std::find_if(elf.sections.begin(), elf.sections.end(), [](Elf32::Section& s){
+		return s.hdr.sh_type == SHT_RPL_CRCS;
+	});
+	crc_section->crc32 = 0;
+	//spans: keeping all the jank in one place since 2020
+	std::span<be2_val<uint32_t>> crcs(
+		(be2_val<uint32_t>*)crc_section->data.data(),
+		crc_section->data.size() / sizeof(be2_val<uint32_t>)
+	);
+
 	bool first_section = true;
 	for (auto section_index : elf.section_file_order) {
 		auto& section = elf.sections[section_index];
 		auto& shdr = section.hdr;
+
+		crcs[section_index] = section.crc32;
 
 		if (!shdr.sh_offset) continue;
 
@@ -179,7 +190,7 @@ void decompress(Elf32& elf) {
 		}
 		//compute crc
 		section.crc32 = crc32_rpx(
-			section.crc32,
+			0,
 			section.data.cbegin(),
 			section.data.cend()
 		);
@@ -196,7 +207,7 @@ void compress(Elf32& elf) {
 
 		//compute crc
 		section.crc32 = crc32_rpx(
-			section.crc32,
+			0,
 			section.data.cbegin(),
 			section.data.cend()
 		);
@@ -255,24 +266,4 @@ int main(int argc, char** argv) {
 	writeelf(elf, cotfile);
 
 	return 0;
-}
-
-template <typename InputIterator>
-uint32_t crc32_rpx(uint32_t crc, InputIterator first, InputIterator last) {
-	u32 crc_table[256];
-	for(u32 i=0; i<256; i++)
-	{
-		u32 c = i;
-		for(u32 j=0; j<8; j++)
-		{
-			if(c & 1)
-				c = 0xedb88320L^(c>>1);
-			else
-				c = c>>1;
-		}
-		crc_table[i] = c;
-	}
-	return ~std::accumulate(first, last, ~crc, [&](uint32_t crc, uint8_t val) {
-		return (crc >> 8) ^ crc_table[(crc^val) & 0xFF];
-	});
 }
