@@ -2,11 +2,11 @@
 
 //lil' utility to hide some ugly reading bits
 template <typename T>
-void is_read_advance(T& val, std::istream& is) {
+static void is_read_advance(T& val, std::istream& is) {
 	is.read((char*)&val, sizeof(val));
 }
 template <typename T>
-void os_write_advance(T& val, std::ostream& os) {
+static void os_write_advance(T& val, std::ostream& os) {
 	os.write((const char*)&val, sizeof(val));
 }
 
