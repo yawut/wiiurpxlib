@@ -7,7 +7,6 @@
 #include "_rpx_elf.hpp"
 #include <vector>
 #include <cstdint>
-#include <forward_list>
 #include <optional>
 #include <iostream>
 
@@ -21,13 +20,15 @@ typedef struct {
 		uint32_t crc32;
 	} Section;
 	std::vector<Section> sections;
-	std::forward_list<size_t> section_file_order;
+	std::vector<size_t> section_file_order;
 } rpx;
 
 //reads a file into an rpx struct.
 std::optional<rpx> readrpx(std::istream& is);
 //writes an rpx struct back to a file.
 void writerpx(const rpx& rpx, std::ostream& os);
+//gets the size of an rpx that's going to be written
+size_t writerpxsize(const rpx& rpx);
 
 //re-links the rpx, adjusting file offsets as needed.
 //does not touch virtual addresses.

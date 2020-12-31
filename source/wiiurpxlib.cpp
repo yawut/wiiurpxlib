@@ -57,6 +57,17 @@ void rpx::writerpx(const rpx& elf, std::ostream& os) {
 	}
 }
 
+size_t rpx::writerpxsize(const rpx& rpx) {
+	auto& last_section = rpx.sections[rpx.section_file_order.back()];
+	size_t length = last_section.hdr.sh_offset.value() + last_section.hdr.sh_size.value();
+
+	if (length & (0x40 - 1)) {
+		length = alignup(length, 0x40);
+	}
+
+	return length;
+}
+
 std::optional<rpx::rpx> rpx::readrpx(std::istream& is) {
 	rpx elf;
 	is_read_advance(elf.ehdr, is);
@@ -87,9 +98,11 @@ std::optional<rpx::rpx> rpx::readrpx(std::istream& is) {
 	//sort by file offset, so we always seek forwards and maintain file order
 	elf.section_file_order.resize(elf.sections.size());
 	std::iota(elf.section_file_order.begin(), elf.section_file_order.end(), 0);
-	elf.section_file_order.sort([=] (const auto& a, const auto& b) {
-		return elf.sections[a].hdr.sh_offset < elf.sections[b].hdr.sh_offset;
-	});
+	std::sort(elf.section_file_order.begin(), elf.section_file_order.end(),
+		[=] (const auto& a, const auto& b) {
+			return elf.sections[a].hdr.sh_offset < elf.sections[b].hdr.sh_offset;
+		}
+	);
 
 	//read section data
 	for (auto& section_index : elf.section_file_order) {
