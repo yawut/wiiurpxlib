@@ -23,6 +23,7 @@
 #define ZLIB_LEVEL 6
 
 using namespace rpx;
+using crc = be2_val<uint32_t>;
 
 void rpx::writerpx(const rpx& elf, std::ostream& os) {
 	//write elf header out
@@ -130,10 +131,21 @@ void rpx::relink(rpx& elf) {
 		return s.hdr.sh_type == SHT_RPL_CRCS;
 	});
 	crc_section->crc32 = 0;
+
+	//check if size wrong
+	if (crc_section->data.size() != elf.sections.size() * sizeof(crc)) {
+		printf("WARN: crc section is %x bytes - should be %x! Fixing.\n",
+			crc_section->data.size(),
+			elf.sections.size() * sizeof(crc)
+		);
+
+		crc_section->data.resize(elf.sections.size() * sizeof(crc));
+	}
+
 	//spans: keeping all the jank in one place since 2020
-	std::span<be2_val<uint32_t>> crcs(
-		(be2_val<uint32_t>*)crc_section->data.data(),
-		crc_section->data.size() / sizeof(be2_val<uint32_t>)
+	std::span<crc> crcs(
+		(crc*)crc_section->data.data(),
+		crc_section->data.size() / sizeof(crc)
 	);
 
 	bool first_section = true;
